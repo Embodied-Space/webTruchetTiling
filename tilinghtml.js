@@ -24,6 +24,7 @@ var inRows;
  */
 var inScale;
 var tileBase;
+var svgElement;
 
 var tileRows = 10;
 var tileCols = 10;
@@ -40,6 +41,7 @@ document.addEventListener("DOMContentLoaded", e => {
   inScale.value = tileScale;
   inScale.addEventListener("change", updateScale);
   tileBase = document.getElementsByTagName("rect")[0];
+  svgElement = document.getElementsByTagName("svg")[0];
 
   svg = document.getElementsByTagName("svg")[0];
   tileGroup = document.getElementById("tileGroup");
@@ -255,8 +257,14 @@ function renderTiles() {
     }
   }
   //TODO: maybe actually calculate this
-  tileBase.setAttribute("width", tileCols * tileScale * .775);
-  tileBase.setAttribute("height", tileRows * tileScale * .905);
+  let width = tileCols * tileScale * .775;
+  let height = tileRows * tileScale * .905;
+  tileBase.setAttribute("width", width);
+  tileBase.setAttribute("height", height);
+  svgElement.setAttribute("width", width);
+  svgElement.setAttribute("height", height);
+  svgElement.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  updateScale();
 }
 const sq3 = Math.sqrt(3);
 const sideDistanceFromCenter = Math.sin(Math.PI / 3) * 100;
@@ -533,4 +541,19 @@ function updateScale() {
   tileScale = parseInt(inScale.value);
   var groupScale = tileScale / 200;
   tileGroup.setAttribute("transform", `scale(${groupScale})`);
+}
+
+//https://stackoverflow.com/a/18197341
+function save() {
+  var svgText = svgElement.outerHTML;
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(svgText));
+  element.setAttribute('download', "truchet.svg");
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
 }
