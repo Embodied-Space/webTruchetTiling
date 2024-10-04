@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Truchet Tiling</title>
+  <script src="tilinghtml.js" lang="javascript">
+  </script>
+  <link href="tilinghtml.css" rel="stylesheet">
+  </link>
+</head>
+
+<body>
+  <svg width="1589" height="1858" viewBox="0 0 1589 1858" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <def>
+      <style>
+        .truchetTile {
+        }
+
+        .truchetLine {
+          stroke: yellow;
+          stroke-width: 40;
+          fill: none;
+          stroke-linecap: butt;
+          pointer-events: none;
+        }
+
+        .truchetOutline {
+          stroke: black;
+          stroke-width: 60;
+          fill: none;
+          stroke-linecap: butt;
+          pointer-events: none;
+        }
+
+        .tileBackground {
+          stroke: none;
+          fill: blue;
+          opacity: 0;
+        }
+
+        .tileBackground:hover {
+          fill: red;
+          opacity: 1;
+        }
+
+        .tileBackground.forced:hover{
+          fill: green;
+          opacity: 1;
+        }
+
+        .cap{
+          stroke: none;
+          fill: yellow;
+          pointer-events: none;
+        }
+      </style>
+      <polyline class="truchet" id="l12_3" points="75,-43.30127019 50,-28.8675134595 50,28.8675134595 75,43.30127019" />
+      <polyline class="truchet" id="l14_6" points="-75,43.30127019 75,-43.30127019" />
+      <polyline class="truchet" id="l13_4" points="75,-43.30127019 37.5,-21.65063509 0,57.7350269205 0,86.60254038" />
+      <g id="t333">
+        <use href="#l12_3" />
+        <use href="#l12_3" transform="rotate(120)" />
+        <use href="#l12_3" transform="rotate(240)" />
+      </g>
+      <g id="t3e3">
+        <use href="#l12_3" />
+        <use href="#l14_6" transform="rotate(120)" />
+        <use href="#l12_3" transform="rotate(180)" />
+      </g>
+      <g id="taea">
+        <use href="#l13_4" transform="rotate(60)" />
+        <polyline class="truchet" points="0,-86.60254038 0,-75" />
+        <polyline class="truchet" points="0,86.60254038 0,75" />
+        <!-- <use href="#l14_6" transform="rotate(60)" />-->
+        <use href="#l13_4" transform="rotate(240)" />
+      </g>
+    </def>
+    <rect x="0" y="0" width="1500" height="1500" fill="black" />
+    <g id="tileGroup" transform="scale(.5)">
+    </g>
+  </svg>
+  <div id="ui">
+    <button id="btnRefresh" onclick="refresh()">Refresh</button>
+    <label for="inCols"># Columns</label>
+    <input id="inCols" type="number" min="1" />
+    <label for="inRows"># Rows</label>
+    <input id="inRows" type="number" min="1" />
+    <label for="inScale">Scale</label>
+    <input id="inScale" type="number" min="1" />
+    <button id="btnReset" onclick="reset()">Reset</button>
+  </div>
+</body>
+
+</html>
