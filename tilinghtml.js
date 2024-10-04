@@ -1,10 +1,26 @@
 /**
+ * @typedef {Object} TileLink
+ * @property {Tri} active
+ * @property {boolean} forced
+ */
+
+/**
  * @typedef {Object} TileData
  * @property {integer} x
  * @property {integer} y
  * @property {Tri[]} links
  * @property {boolean} forced
  */
+
+/**
+ * @readonly
+ * @enum {number}
+ */
+var Tri = {
+  NO: 0,
+  YES: 1,
+  MAYBE: 2
+}
 
 var svg, tileGroup;
 /**
@@ -23,14 +39,44 @@ var inRows;
  * @type {HTMLInputElement}
  */
 var inScale;
+/**
+ * @type {HTMLSelectElement}
+ */
+var ddlCross;
+/**
+ * @type {HTMLInputElement}
+ */
+var chkExtend;
+/**
+ * @type {SVGRect}
+ */
 var tileBase;
+/**
+ * @type {SVGElement}
+ */
 var svgElement;
 
 var tileRows = 10;
 var tileCols = 10;
 var tileScale = 100;
+var allowCross = Tri.NO;
+var extendOpposingPairs = false;
 
 document.addEventListener("DOMContentLoaded", e => {
+  initUI();
+
+  tileBase = document.getElementsByTagName("rect")[0];
+  svgElement = document.getElementsByTagName("svg")[0];
+  svgElement.addEventListener("click", handleClick);
+
+  svg = document.getElementsByTagName("svg")[0];
+  tileGroup = document.getElementById("tileGroup");
+  initTileData();
+  resolveTiles();
+  renderTiles();
+});
+
+function initUI() {
   inCols = document.getElementById("inCols");
   inCols.value = tileCols;
   inCols.addEventListener("change", inputUpdate);
@@ -40,24 +86,14 @@ document.addEventListener("DOMContentLoaded", e => {
   inScale = document.getElementById("inScale");
   inScale.value = tileScale;
   inScale.addEventListener("change", updateScale);
-  tileBase = document.getElementsByTagName("rect")[0];
-  svgElement = document.getElementsByTagName("svg")[0];
-
-  svg = document.getElementsByTagName("svg")[0];
-  tileGroup = document.getElementById("tileGroup");
-  initTileData();
-  resolveTiles();
-  renderTiles();
-});
-/**
- * @readonly
- * @enum {number}
- */
-var Tri = {
-  NO: 0,
-  YES: 1,
-  MAYBE: 2
+  ddlCross = document.getElementById("ddlCross");
+  ddlCross.selectedIndex = allowCross;
+  ddlCross.addEventListener("change", updateCross);
+  chkExtend = document.getElementById("chkExtend");
+  chkExtend.checked = extendOpposingPairs;
+  chkExtend.addEventListener("change", updateCross);
 }
+
 function initTileData() {
   tileData = [];
   for (var xi = 0; xi < tileCols; xi++) {
@@ -73,7 +109,7 @@ function initTileData() {
  * if no links array provided, will fill with Tri.MAYBE
  * @param {integer} xi
  * @param {integer} yi
- * @param {Tri[]} links 
+ * @param {Tri[]} [links]
  */
 function createTile(xi, yi, links) {
   let tile = { links: links || [], x: xi, y: yi, forced: false };
@@ -278,6 +314,7 @@ const inDistanceFromCenter = [
   //(inFactor / Math.tan(Math.PI / 3)) / Math.cos(Math.PI / 6)//same center length
   0
 ];
+const extendedInDistanceFromCenter = 25 / Math.cos(Math.PI / 6);
 
 /**
  * 
@@ -354,8 +391,58 @@ function renderTile(tile) {
       yesLinks.push(i);
     }
   }
-  //shuffle the links
-  shuffle(yesLinks);
+
+  // //shuffle the links
+  var opposingUN = false;
+  if (allowCross == Tri.NO || allowCross == Tri.MAYBE) {
+    if (yesLinks.length == 6) {
+      if (randomInt(2) == 0) {
+        var linkTo = randomInt(3);
+        var temp = yesLinks[linkTo + 1];
+        yesLinks[linkTo + 1] = yesLinks[linkTo + 3];
+        yesLinks[linkTo + 3] = temp;
+      } else {
+        rotate(yesLinks);
+      }
+    } else if (yesLinks.length == 4 && allowCross == Tri.NO) {
+      var pattern = getPattern(yesLinks);
+      switch (pattern) {
+        case "0121":
+        case "1121":
+          //leave yesLinks as-is
+          break;
+        case "0212":
+          rotate(yesLinks, 1);
+          break;
+        default:
+          rotate(yesLinks);
+          break;
+      }
+    } else {
+      rotate(yesLinks);
+    }
+  } else {
+   shuffle(yesLinks);
+  }
+  
+  //check for opposing UNs
+  if (yesLinks.length == 4) {
+    var linkPairs = [
+      normalizeLinkPair(yesLinks[0], yesLinks[1]),
+      normalizeLinkPair(yesLinks[2], yesLinks[3]),
+    ];
+    linkPairs.sort((a, b) => a.min - b.min);
+    var pattern = "" + linkPairs[0].length + (linkPairs[1].min - linkPairs[0].max) + linkPairs[1].length;
+    switch (pattern) {
+      case "121":
+        opposingUN = true;
+        break;
+      default:
+        console.log(`${tile.x},${tile.y} pattern ${pattern}`);
+        break;
+    }
+  }
+
   //link pairs of links
   for (var i = 0; i < yesLinks.length; i += 2) {
     if (i == yesLinks.length - 1) {
@@ -365,8 +452,8 @@ function renderTile(tile) {
     } else {
       let ia = yesLinks[i];
       let ib = yesLinks[i + 1];
-      group.appendChild(getTruchetPolyline(ia, ib, 0, "truchetOutline"));
-      group.appendChild(getTruchetPolyline(ia, ib, 1, "truchetLine"));
+      group.appendChild(getTruchetPolyline(ia, ib, 0, "truchetOutline", extendOpposingPairs && opposingUN));
+      group.appendChild(getTruchetPolyline(ia, ib, 1, "truchetLine", extendOpposingPairs && opposingUN));
     }
   }
 
@@ -387,15 +474,45 @@ function renderTile(tile) {
   tileGroup.appendChild(group);
 }
 
+function normalizeLinkPair(start, end) {
+    var linkPair = {
+      min: Math.min(start, end),
+      max: Math.max(start, end)
+    };
+    linkPair.length = linkPair.max - linkPair.min;
+    if (linkPair.length > 3) {
+      var temp = linkPair.max;
+      linkPair.max = linkPair.min + 6;
+      linkPair.min = temp;
+      linkPair.length = linkPair.max - linkPair.min;
+    }
+  return linkPair;
+}
+
+/**
+ * 
+ * @param {integer[]} yesLinks 
+ */
+function getPattern(yesLinks) {
+      var prev = 0;
+var pattern = "";
+      for (var i = 0; i < yesLinks.length; i++) {
+        pattern += yesLinks[i] - prev;
+        prev = yesLinks[i];
+      }
+  return pattern;
+}
+
 /**
  * 
  * @param {integer} ia 
  * @param {integer} ib 
  * @param {number} overlap 
  * @param {string} className 
- * @returns 
+ * @param {boolean} [extendInward]
+ * @returns {SVGPolylineElement}
  */
-function getTruchetPolyline(ia, ib, overlap, className) {
+function getTruchetPolyline(ia, ib, overlap, className, extendInward = false) {
 
       var points = [];
       points.push({
@@ -408,12 +525,12 @@ function getTruchetPolyline(ia, ib, overlap, className) {
       }
       if (skips < 3) {
         points.push({
-          x: Math.sin(Math.PI * ia / 3) * inDistanceFromCenter[skips],
-          y: Math.cos(Math.PI * (ia + 3) / 3) * inDistanceFromCenter[skips],
+          x: Math.sin(Math.PI * ia / 3) * (extendInward ? extendedInDistanceFromCenter : inDistanceFromCenter[skips]),
+          y: Math.cos(Math.PI * (ia + 3) / 3) * (extendInward ? extendedInDistanceFromCenter : inDistanceFromCenter[skips]),
         });
         points.push({
-          x: Math.sin(Math.PI * ib / 3) * inDistanceFromCenter[skips],
-          y: Math.cos(Math.PI * (ib + 3) / 3) * inDistanceFromCenter[skips],
+          x: Math.sin(Math.PI * ib / 3) * (extendInward ? extendedInDistanceFromCenter : inDistanceFromCenter[skips]),
+          y: Math.cos(Math.PI * (ib + 3) / 3) * (extendInward ? extendedInDistanceFromCenter : inDistanceFromCenter[skips]),
         });
       }
       points.push({
@@ -424,6 +541,22 @@ function getTruchetPolyline(ia, ib, overlap, className) {
       polyline.setAttribute('points', points.map(p => `${p.x},${p.y}`).join(" "));
   polyline.setAttribute('class', className);
   return polyline;
+}
+
+/**
+ * inplace rotate/shift array
+ * @param {Array} a 
+ * @param {integer} [count]
+ */
+function rotate(a, count) {
+  count = count || randomInt(a.length);
+  for (var i = count; i > 0; i--){
+    var temp = a[0];
+    for (var j = 1; j < a.length; j++){
+      a[j - 1] = a[j];
+    }
+    a[a.length - 1] = temp;
+  }
 }
 
 /**
@@ -461,7 +594,6 @@ function addTiles() {
   }
 }
 
-document.addEventListener("click", handleClick);
 function handleClick(event) {
   var targetTileGroup = event.target;
   while (targetTileGroup != null && targetTileGroup.getAttribute('class') != 'truchetTile') {
@@ -541,6 +673,15 @@ function updateScale() {
   tileScale = parseInt(inScale.value);
   var groupScale = tileScale / 200;
   tileGroup.setAttribute("transform", `scale(${groupScale})`);
+}
+
+function updateCross() {
+  allowCross = ddlCross.selectedIndex;
+  extendOpposingPairs = chkExtend.checked;
+  unrenderTiles();
+  resetTileData();
+  resolveTiles();
+  renderTiles();
 }
 
 //https://stackoverflow.com/a/18197341

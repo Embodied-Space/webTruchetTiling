@@ -90,6 +90,14 @@
     <input id="inRows" type="number" min="1" />
     <label for="inScale">Scale</label>
     <input id="inScale" type="number" min="1" />
+    <label for="ddlCross">Overlap</label>
+    <select id="ddlCross">
+      <option value="nocross">no cross</option>
+      <option value="cross">cross</option>
+      <option value="lowcross">low cross</option>
+    </select>
+    <label for="chkExtend">Extend Opposing Pairs</label>
+    <input id="chkExtend" type="checkbox" />
     <button id="btnSave" onclick="save()">Save</button>
     <button id="btnReset" onclick="reset()">Reset</button>
   </div>
